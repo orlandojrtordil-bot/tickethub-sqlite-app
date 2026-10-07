@@ -58,11 +58,16 @@ export function TripProvider({ children }) {
   const addTrip = (trip) => {
     try {
       const pnr = 'TH' + Math.floor(1000 + Math.random() * 9000);
+      // db.js reads camelCase flightNo and requires a non-null reference, so
+      // fall back to a generated one when Checkout did not supply it.
+      const reference =
+        trip.confirmation ||
+        `TH-${Math.floor(10000 + Math.random() * 90000)}`;
       addBooking({
-        reference: trip.confirmation || undefined,
+        reference,
         pnr,
         airline: trip.airline,
-        flight_no: trip.flight,
+        flightNo: trip.flight,
         origin: trip.origin,
         destination: trip.destination,
         depart: trip.time,
@@ -73,7 +78,7 @@ export function TripProvider({ children }) {
         status: 'Confirmed',
       });
       loadTrips();
-      return { ...trip, status: 'Confirmed', pnr };
+      return { ...trip, reference, status: 'Confirmed', pnr };
     } catch (error) {
       Alert.alert('Could not save booking', String(error?.message ?? error));
       return { ...trip, status: 'Confirmed' };

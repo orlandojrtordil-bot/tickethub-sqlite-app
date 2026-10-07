@@ -9,7 +9,9 @@ import { colors, radii, spacing } from "../../theme";
 import { useTrips } from "../context/TripContext";
 import { useProfile } from "../context/ProfileContext";
 import { formatPeso } from "../utils/formatCurrency";
-import { makeReference } from "../services/db";
+// Booking reference shown on the confirmation screen. addBooking() stores
+// whatever we pass in; db.js does not generate references itself.
+const makeReference = () => `TH-${Math.floor(10000 + Math.random() * 90000)}`;
 
 const BASE_FARE = 540.0;
 const TAXES = 82.5;
@@ -51,6 +53,7 @@ export default function CheckoutScreen({ navigation, route }) {
       time: flight.depart,
       arrivalTime: flight.arrive,
       duration: flight.duration,
+      stops: "Non-stop",
       class: "Economy",
       price: TOTAL,
       passengers,

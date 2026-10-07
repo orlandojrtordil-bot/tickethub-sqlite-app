@@ -101,7 +101,7 @@ export default function BookingConfirmedScreen({ navigation, route }) {
             </View>
           </View>
           <AppText style={styles.routeMeta}>
-            Non-stop • 6h 55m
+            {booking.duration || 'Non-stop'} • {booking.stops || ''}
           </AppText>
 
           <View style={styles.detailsRow}>

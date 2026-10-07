@@ -28,7 +28,8 @@
           "photosPermission": "Allow TicketHub to access your photos so you can set a profile picture.",
           "cameraPermission": "Allow TicketHub to use the camera so you can take a profile picture."
         }
-      ]
+      ],
+      "expo-sqlite"
     ]
   }
 }

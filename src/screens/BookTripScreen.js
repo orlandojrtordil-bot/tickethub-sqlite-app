@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  FlatList,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -20,20 +21,31 @@ import { useTrips } from "../context/TripContext";
 
 const FILTERS = ["All", "Fastest", "Cheapest", "Direct", "Morning"];
 
+// Chip -> getFlights(search, mode, morningOnly) mapping. 'Direct' and 'All'
+// both fall through to the default (departure time) ordering; the schema has
+// no stops column, so only Morning can narrow the SQL result set.
+const FILTER_MODE = {
+  Cheapest: "cheapest",
+  Fastest: "fastest",
+};
+
 // Map a `flights` row from the local database onto the fields the existing
-// card layout renders (code = first token of the flight number, stops as text).
+// card layout renders (code = first token of the flight number; the schema
+// has no stops/next_day columns, so derive next-day from the times).
 const mapRow = (row) => ({
   id: row.id,
   airline: row.airline,
   code: String(row.flight_no).split(" ")[0],
   flight: row.flight_no,
   aircraft: row.aircraft,
+  origin: row.origin,
+  destination: row.destination,
   depart: row.depart,
   arrive: row.arrive,
   duration: row.duration,
-  stops: row.stops === 0 ? "Non-stop" : `${row.stops} stop`,
+  stops: "Non-stop",
+  nextDay: row.arrive < row.depart,
   price: row.price,
-  nextDay: row.next_day === 1,
   seats: row.seats,
 });
 
@@ -51,7 +63,11 @@ export default function BookTripScreen({ navigation }) {
   // Reload from SQLite whenever the search text or a filter chip changes.
   const loadFlights = useCallback(() => {
     try {
-      const rows = getFlights(search, activeFilter).map(mapRow);
+      const rows = getFlights(
+        search,
+        FILTER_MODE[activeFilter] ?? "default",
+        activeFilter === "Morning"
+      ).map(mapRow);
       setFlights(rows);
       // Keep the selection if the flight still exists, otherwise fall back
       // to the first result so the sticky total always has a price.
@@ -72,7 +88,14 @@ export default function BookTripScreen({ navigation }) {
 
   const handleSaveFlight = (form) => {
     try {
-      addFlight(form);
+      // The modal collects { airline, flight_no, price, seats }; db.js takes
+      // camelCase flightNo and fills the JFK->LHR route defaults itself.
+      addFlight({
+        airline: form.airline,
+        flightNo: form.flight_no,
+        price: form.price,
+        seats: form.seats,
+      });
       setAddModalVisible(false);
       loadFlights();
     } catch (error) {
@@ -186,19 +209,19 @@ export default function BookTripScreen({ navigation }) {
         })}
       </ScrollView>
 
-      <ScrollView
+      <FlatList
         showsVerticalScrollIndicator={false}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-      >
-        {flights.length === 0 ? (
+        data={flights}
+        keyExtractor={(item) => String(item.id)}
+        ListEmptyComponent={
           <AppText style={styles.emptyText}>No flights match your search.</AppText>
-        ) : null}
-        {flights.map((flight) => {
+        }
+        renderItem={({ item: flight }) => {
           const selected = selectedFlight?.id === flight.id;
           return (
             <View
-              key={flight.id}
               style={[styles.card, selected && styles.cardSelected]}
             >
               <View style={styles.cardHeader}>
@@ -288,8 +311,8 @@ export default function BookTripScreen({ navigation }) {
               </View>
             </View>
           );
-        })}
-      </ScrollView>
+        }}
+      />
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
         <View>

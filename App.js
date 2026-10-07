@@ -5,11 +5,25 @@ import { TripProvider } from "./src/context/TripContext";
 import { ProfileProvider } from "./src/context/ProfileContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useInterFonts } from "./src/components/AppText";
-import { initDatabase } from "./src/services/db";
+import { db, initDatabase } from "./src/services/db";
 
 // Open the offline database (tickethub.db) exactly once at startup, before
 // any screen queries it. Tables are created and seeded on first launch.
 try {
+  // A database created by an earlier schema is missing duration_min, which
+  // CREATE TABLE IF NOT EXISTS will not add. Rebuild only the flights table
+  // in that case so initDatabase() can reseed the Lab 05 flights; the
+  // bookings table shape is unchanged, so existing bookings survive.
+  const flightColumns = db.getAllSync(
+    "SELECT name FROM pragma_table_info('flights');"
+  );
+  const isLegacySchema =
+    flightColumns.length > 0 &&
+    !flightColumns.some((column) => column.name === "duration_min");
+  if (isLegacySchema) {
+    db.execSync("DROP TABLE flights;");
+  }
+
   initDatabase();
 } catch (error) {
   Alert.alert(
